@@ -6,8 +6,8 @@ const dotenv = require("dotenv");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const User = require("./models/User");
-const Message = require("./models/Message");
+const User = require("./models/user");
+const Message = require("./models/message");
 const Invite = require("./models/Invite");
 const { v4: uuidv4 } = require("uuid");
 
