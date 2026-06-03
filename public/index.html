@@ -47,6 +47,7 @@ header{
     border-radius:8px;
     max-width:70%;
     word-wrap:break-word;
+    cursor:pointer;
 }
 
 .my-message{
@@ -59,10 +60,8 @@ header{
 .my-message::after{
     content:"";
     position:absolute;
-
     right:-10px;
     top:10px;
-
     border-left:10px solid #005c4b;
     border-top:10px solid transparent;
     border-bottom:10px solid transparent;
@@ -77,13 +76,21 @@ header{
 .other-message::before{
     content:"";
     position:absolute;
-
     left:-10px;
     top:10px;
-
     border-right:10px solid #202c33;
     border-top:10px solid transparent;
     border-bottom:10px solid transparent;
+}
+
+.reply-preview{
+    background:#111b21;
+    padding:6px;
+    border-left:3px solid #25D366;
+    margin-bottom:6px;
+    font-size:13px;
+    border-radius:5px;
+    color:#ddd;
 }
 
 .time{
@@ -108,6 +115,7 @@ button{
 }
 </style>
 </head>
+
 <body>
 
 <header>🏰 Welcome To Mahishmati</header>
@@ -122,9 +130,9 @@ button{
     <p id="invite-link"></p>
 </div>
 
- <div id="welcome"></div>
+<div id="welcome"></div>
 
- <div id="online-box" style="
+<div id="online-box" style="
 width:90%;
 max-width:800px;
 margin:10px auto;
@@ -132,13 +140,8 @@ padding:10px;
 background:#222;
 border-radius:10px;
 ">
-
-<b>🟢 Online Users:</b>
-
-<div id="online-users">
-No Users Online
-</div>
-
+    <b>🟢 Online Users:</b>
+    <div id="online-users">No Users Online</div>
 </div>
 
 <div id="chat-container">
@@ -146,10 +149,27 @@ No Users Online
     <div id="messages"></div>
 
     <div id="typing" style="
-padding:5px;
-color:#25D366;
-font-size:14px;
-"></div>
+    padding:5px;
+    color:#25D366;
+    font-size:14px;
+    "></div>
+
+    <div id="reply-box" style="
+    display:none;
+    background:#202c33;
+    border-left:4px solid #25D366;
+    padding:8px 35px 8px 8px;
+    margin-top:8px;
+    border-radius:6px;
+    position:relative;
+    ">
+        <span id="reply-text"></span>
+        <button type="button" onclick="cancelReply()" style="
+        position:absolute;
+        right:5px;
+        top:5px;
+        ">×</button>
+    </div>
 
     <form id="form">
         <input id="msg" autocomplete="off" placeholder="Type message...">
@@ -161,14 +181,13 @@ font-size:14px;
 <script src="/socket.io/socket.io.js"></script>
 
 <script>
-    const token = localStorage.getItem("token");
+const token = localStorage.getItem("token");
 
 if (!token) {
     window.location.href = "/login.html";
 }
-const user = JSON.parse(
-    localStorage.getItem("user")
-);
+
+const user = JSON.parse(localStorage.getItem("user"));
 
 if(user){
     document.getElementById("welcome").innerHTML =
@@ -178,103 +197,116 @@ if(user){
 if(user && user.role === "admin"){
     document.getElementById("admin-panel").style.display = "block";
 }
+
 const socket = io();
 
 socket.on("connect", () => {
-
     console.log("Socket Connected");
 
     if(user && user.name){
-    socket.emit("user-online", user.name);
-}
+        socket.emit("user-online", user.name);
+    }
 });
 
 const form = document.getElementById("form");
 const input = document.getElementById("msg");
-input.addEventListener(
-    "input",
-    () => {
-
-        socket.emit(
-            "typing",
-            user.name
-        );
-
-    }
-);
 const messages = document.getElementById("messages");
-const typingDiv =
-document.getElementById("typing");
+const typingDiv = document.getElementById("typing");
+
+let replyingTo = null;
+
+input.addEventListener("input", () => {
+    if(user && user.name){
+        socket.emit("typing", user.name);
+    }
+});
+
+function getReplyHTML(replyTo){
+    if(!replyTo){
+        return "";
+    }
+
+    return `
+        <div class="reply-preview">
+            <b>${replyTo.sender}</b><br>
+            ${replyTo.text}
+        </div>
+    `;
+}
+
 async function loadMessages() {
 
     const res = await fetch("/api/messages");
-
     const oldMessages = await res.json();
 
     messages.innerHTML = "";
 
     oldMessages.forEach((data) => {
 
-    const item = document.createElement("div");
+        const item = document.createElement("div");
 
-item.classList.add("message");
+        item.classList.add("message");
 
-if(data.sender === user.name){
-    item.classList.add("my-message");
-}
-else{
-    item.classList.add("other-message");
-}
+        if(data.sender === user.name){
+            item.classList.add("my-message");
+        }
+        else{
+            item.classList.add("other-message");
+        }
 
-    let editButton = "";
+        let editButton = "";
 
-    if(data.sender === user.name){
+        if(data.sender === user.name){
+            editButton = `
+                <button onclick="event.stopPropagation(); editMessage('${data._id}')">
+                    Edit
+                </button>
+            `;
+        }
 
-        editButton = `
-            <button onclick="editMessage('${data._id}')">
-                Edit
-            </button>
+        item.innerHTML = `
+            ${getReplyHTML(data.replyTo)}
+
+            <b>${data.sender}</b><br>
+            ${data.text}
+
+            <div class="time">
+                ${data.time}
+                ${data.edited ? " ✏️ Edited" : ""}
+                ${data.seen ? " ✓✓" : " ✓"}
+            </div>
+
+            ${editButton}
         `;
-    }
 
-    item.innerHTML = `
-        <b>${data.sender}</b><br>
-        ${data.text}
-        <div class="time">
-            ${data.time}
-            ${data.edited ? " ✏️ Edited" : ""}
-            ${data.seen ? " ✓✓" : " ✓"}
-        </div>
+        item.addEventListener("click", () => {
+            replyMessage(data.sender, data.text);
+        });
 
-        ${editButton}
-    `;
-
-    messages.appendChild(item);
-
-});
+        messages.appendChild(item);
+    });
 
     messages.scrollTop = messages.scrollHeight;
-
 }
 
 form.addEventListener("submit", function(e){
     e.preventDefault();
 
     if(input.value.trim() === ""){
-    return;
-}
+        return;
+    }
 
     const data = {
-    user: user.name,
-    message: input.value,
-    time: new Date().toLocaleTimeString()
-};
-
-console.log(data);
+        user: user.name,
+        message: input.value,
+        time: new Date().toLocaleTimeString(),
+        replyTo: replyingTo
+    };
 
     socket.emit("chat-message", data);
 
     input.value = "";
+    cancelReply();
 });
 
 socket.on("chat-message", (data)=>{
@@ -291,107 +323,102 @@ socket.on("chat-message", (data)=>{
     }
 
     item.innerHTML = `
+        ${getReplyHTML(data.replyTo)}
+
         <b>${data.sender}</b><br>
         ${data.text}
+
         <div class="time">
             ${data.time}
             ${data.seen ? " ✓✓" : " ✓"}
         </div>
     `;
 
-    messages.appendChild(item);
+    item.addEventListener("click", () => {
+        replyMessage(data.sender, data.text);
+    });
 
+    messages.appendChild(item);
     messages.scrollTop = messages.scrollHeight;
 
     if(data.sender !== user.name){
-
-        socket.emit(
-            "message-seen",
-            data._id
-        );
-
+        socket.emit("message-seen", data._id);
     }
-
 });
 
 socket.on("online-users", (users) => {
-
     const cleanUsers = users.filter(u => u);
 
     document.getElementById("online-users").innerHTML =
         cleanUsers.length > 0
         ? cleanUsers.join("<br>")
         : "No Users Online";
-
 });
 
 socket.on("typing", (username) => {
+    typingDiv.innerText = `${username} is typing...`;
 
-    typingDiv.innerText =
-        `${username} is typing...`;
+    clearTimeout(window.typingTimeout);
 
-    clearTimeout(
-        window.typingTimeout
-    );
-
-    window.typingTimeout =
-        setTimeout(() => {
-
-            typingDiv.innerText = "";
-
-        }, 2000);
-
+    window.typingTimeout = setTimeout(() => {
+        typingDiv.innerText = "";
+    }, 2000);
 });
 
 socket.on("message-updated", () => {
-    
-
     loadMessages();
-
-}); 
-
-socket.on("chat-cleared", () => {
-
-    messages.innerHTML = "";
-
 });
 
-socket.on(
-    "message-seen-update",
-    () => {
+socket.on("chat-cleared", () => {
+    messages.innerHTML = "";
+});
 
-        loadMessages();
-
-    }
-);
-
+socket.on("message-seen-update", () => {
+    loadMessages();
+});
 
 loadMessages();
 
 async function editMessage(id){
 
-    const newText = prompt(
-        "Edit your message:"
-    );
+    const newText = prompt("Edit your message:");
 
     if(!newText){
         return;
     }
 
     await fetch(`/api/messages/${id}`, {
-
         method: "PUT",
-
         headers: {
             "Content-Type": "application/json"
         },
-
         body: JSON.stringify({
             text: newText
         })
-
     });
+}
 
+function replyMessage(sender, text){
+
+    replyingTo = {
+        sender,
+        text
+    };
+
+    document.getElementById("reply-box").style.display = "block";
+
+    document.getElementById("reply-text").innerHTML =
+        `<b>Replying to ${sender}</b><br>${text}`;
+
+    input.focus();
+}
+
+function cancelReply(){
+
+    replyingTo = null;
+
+    document.getElementById("reply-box").style.display = "none";
+    document.getElementById("reply-text").innerHTML = "";
 }
 
 async function createInvite(){
@@ -410,6 +437,7 @@ async function createInvite(){
 
     document.getElementById("invite-link").innerText = data.link;
 }
+
 async function clearChat(){
 
     if(!confirm("Clear all chats?")){
@@ -434,11 +462,11 @@ async function clearChat(){
 function logout(){
 
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
 
     window.location.href = "/login.html";
-
 }
-
 </script>
+
 </body>
 </html>

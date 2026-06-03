@@ -341,11 +341,12 @@ io.on("connection", (socket) => {
             }
 
             const msg = await Message.create({
-                sender: data.user,
-                text: data.message,
-                time: data.time,
-                seen: false
-            });
+    sender: data.user,
+    text: data.message,
+    time: data.time,
+    seen: false,
+    replyTo: data.replyTo || null
+});
 
             io.emit("chat-message", msg);
 

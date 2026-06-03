@@ -24,7 +24,11 @@ const messageSchema = new mongoose.Schema({
     seen: {
         type: Boolean,
         default: false
-    }
+    },
+    replyTo: {
+    sender: String,
+    text: String
+}
 
 }, {
     timestamps: true
