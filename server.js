@@ -424,6 +424,32 @@ app.put("/api/messages/:id", async (req, res) => {
     }
 
 });
+app.delete("/api/messages", async (req, res) => {
+    try {
+        const { role } = req.body;
+
+        if (role !== "admin") {
+            return res.status(403).json({
+                message: "Only admin can clear chats"
+            });
+        }
+
+        await Message.deleteMany({});
+
+        io.emit("chat-cleared");
+
+        res.json({
+            message: "Chat cleared successfully"
+        });
+
+    } catch (err) {
+        console.log(err);
+
+        res.status(500).json({
+            message: "Server Error"
+        });
+    }
+});
 
 app.get("/favicon.ico", (req, res) => {
     res.status(204).end();

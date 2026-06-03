@@ -118,6 +118,7 @@ button{
 
 <div id="admin-panel" style="text-align:center;margin-top:10px;display:none;">
     <button onclick="createInvite()">Create Invite Link</button>
+    <button onclick="clearChat()">Clear Chat</button>
     <p id="invite-link"></p>
 </div>
 
@@ -347,6 +348,12 @@ socket.on("message-updated", () => {
 
     loadMessages();
 
+}); 
+
+socket.on("chat-cleared", () => {
+
+    messages.innerHTML = "";
+
 });
 
 socket.on(
@@ -402,6 +409,26 @@ async function createInvite(){
     const data = await res.json();
 
     document.getElementById("invite-link").innerText = data.link;
+}
+async function clearChat(){
+
+    if(!confirm("Clear all chats?")){
+        return;
+    }
+
+    const res = await fetch("/api/messages", {
+        method: "DELETE",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            role: user.role
+        })
+    });
+
+    const data = await res.json();
+
+    alert(data.message);
 }
 
 function logout(){
