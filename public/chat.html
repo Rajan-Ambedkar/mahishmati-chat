@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Mahishmati Chat</title>
+</head>
+
+<body>
+
+<h2>Mahishmati Group Chat</h2>
+
+<div id="messages"></div>
+
+<input id="msg" placeholder="Type Message">
+
+<button onclick="sendMessage()">
+Send
+</button>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+
+const socket = io();
+
+function sendMessage(){
+
+    const msg =
+    document.getElementById("msg").value;
+
+    socket.emit("chat-message", {
+        text: msg,
+        time: new Date().toLocaleTimeString()
+    });
+
+    document.getElementById("msg").value="";
+}
+
+socket.on("chat-message",(data)=>{
+
+    const div =
+    document.createElement("div");
+
+    div.innerHTML =
+    data.time +
+    " : " +
+    data.text;
+
+    document
+    .getElementById("messages")
+    .appendChild(div);
+
+});
+
+</script>
+
+</body>
+</html>
