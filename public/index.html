@@ -247,7 +247,7 @@ async function loadMessages() {
 
         item.classList.add("message");
 
-        if(data.sender === user.name){
+        if(data.sender.toLowerCase() === user.name.toLowerCase()){
             item.classList.add("my-message");
         }
         else{
